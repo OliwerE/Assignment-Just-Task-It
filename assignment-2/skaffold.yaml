@@ -1,0 +1,24 @@
+apiVersion: skaffold/v2beta29
+kind: Config
+metadata:
+  name: just-task-it-k8s
+build:
+  artifacts:
+    - image: taskit
+      context: taskit-service
+      docker:
+        dockerfile: Dockerfile.production
+    - image: notification
+      context: notification-service
+      docker:
+        dockerfile: Dockerfile.production
+deploy:
+  kubectl:
+    manifests:
+      - ./k8s/ingress.yaml
+      - ./k8s/mongodb.yaml
+      - ./k8s/rabbitmq.yaml
+      - ./k8s/redis.yaml
+      - ./k8s/taskit.yaml
+      - ./k8s/notification.yaml
+

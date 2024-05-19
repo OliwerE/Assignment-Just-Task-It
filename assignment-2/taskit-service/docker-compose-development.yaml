@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  mongodb:
+    volumes:
+      - ./.volumes/mongodb/:/data/db
+  taskit:
+    environment:
+      - BASE_URL=${BASE_URL}
+      - DB_CONNECTION_STRING=${DB_CONNECTION_STRING}
+      - PORT=${NODE_PORT}
+      - SESSION_NAME=${SESSION_NAME}
+      - SESSION_SECRET=${SESSION_SECRET}
+    ports:
+      - "${DOCKER_PORT}:${NODE_PORT}"
+    volumes: 
+      - ./src:/usr/src/app/src

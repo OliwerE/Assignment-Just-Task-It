@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: notification
+  template:
+    metadata:
+      labels:
+        app: notification
+    spec:
+      containers:
+      - name: notification
+        image: gitlab.lnu.se:5050/2dv013/student/oe222ez/part2-architecture/assignment-2/notification # prod
+        imagePullPolicy: Always
+        # image: notification:latest # dev
+        ports:
+        - containerPort: 3000
+      imagePullSecrets:
+      - name: regcred # Secret set as a secret in the cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification
+spec:
+  type: ClusterIP
+  selector:
+    app: notification
+  ports:
+  - port: 3000
+    targetPort: 3000

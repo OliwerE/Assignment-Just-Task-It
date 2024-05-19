@@ -1,0 +1,65 @@
+stages:          # List of stages for jobs, and their order of execution
+  - build
+  - test
+  - integration-test
+  - deploy
+
+build:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.9.0-debug
+    entrypoint: [""]
+  script:  # See https://docs.gitlab.com/ee/ci/docker/using_kaniko.html
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}/taskit-service"  
+      --dockerfile "${CI_PROJECT_DIR}/taskit-service/Dockerfile.production"
+      --destination "${CI_REGISTRY_IMAGE}/taskit:${CI_COMMIT_TAG:-latest}"
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}/notification-service"  
+      --dockerfile "${CI_PROJECT_DIR}/notification-service/Dockerfile.production"
+      --destination "${CI_REGISTRY_IMAGE}/notification:${CI_COMMIT_TAG:-latest}"
+
+lint-test-taskit-service:
+  stage: test
+  image: node:18-alpine
+  script:
+    - cd taskit-service
+    - npm install
+    - npm run lint
+
+lint-test-notification-service:
+  stage: test
+  image: node:18-alpine
+  script:
+    - cd notification-service
+    - npm install
+    - npm run lint
+
+deploy:
+  stage: deploy
+  image:
+    name: gcr.io/k8s-skaffold/skaffold:v2.0.0
+    entrypoint: ['']
+  environment:
+    name: production
+    url: $TASKIT_URL # Set as environment variable. URL to your application. Ie HTTP://cscloud6-25.lnu.se
+  when: manual
+  script:
+    - kubectl config get-contexts
+   # Configure kubectl to use our own k8s cluster, you need to setup an Gitlab agent in you k8s kluster
+    - kubectl config use-context $K8S_CONTEXT
+   # Authorize the cluster to pull images from our registry. (synced against Deploy Token "gitlab-deploy-token")
+    - kubectl delete secret regcred || true
+    - kubectl create secret docker-registry regcred --docker-server=$CI_REGISTRY --docker-username=$CI_DEPLOY_USER --docker-password=$CI_DEPLOY_PASSWORD
+
+    - kubectl apply -f ./k8s/mongodb.yaml -f ./k8s/rabbitmq.yaml -f ./k8s/redis.yaml -f ./k8s/taskit.yaml -f ./k8s/notification.yaml # We are skipping ingress for now
+
+    # Set enviornment variables in deployments
+    - kubectl set env deployment/taskit RABBITMQ_DEFAULT_USER=$RABBITMQ_DEFAULT_USER RABBITMQ_DEFAULT_PASS=$RABBITMQ_DEFAULT_PASS SESSION_SECRET=$SESSION_SECRET
+    - kubectl set env deployment/rabbitmq RABBITMQ_DEFAULT_USER=$RABBITMQ_DEFAULT_USER RABBITMQ_DEFAULT_PASS=$RABBITMQ_DEFAULT_PASS
+    - kubectl set env deployment/notification SLACK_TOKEN=$SLACK_TOKEN SLACK_CHANNEL=$SLACK_CHANNEL RABBITMQ_DEFAULT_USER=$RABBITMQ_DEFAULT_USER RABBITMQ_DEFAULT_PASS=$RABBITMQ_DEFAULT_PASS
+    
+   # Debugging outputs after completion
+    - kubectl get deployments
+    - kubectl get pods
+    - kubectl get services

@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+
+  mongodb:
+    volumes:
+      - /var/mongodb:/data/db
+  taskit:
+    build:
+      dockerfile: ./Dockerfile.production
+    environment:
+      - BASE_URL=${BASE_URL}
+      - DB_CONNECTION_STRING=mongodb://mongodb:27017/tasks
+      - NODE_ENV=production
+      - PORT=${NODE_PORT:-3000}
+      - SESSION_NAME=${SESSION_NAME}
+      - SESSION_SECRET=${SESSION_SECRET}
+    ports:
+      - "${DOCKER_PORT}:${NODE_PORT:-3000}"
+    

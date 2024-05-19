@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  mongodb:
+    container_name: mongodb
+    image: mongo:6.0.2
+  taskit:
+    container_name: taskit
+    image: 2dv013/just-task-it:0.1
+    build: 
+      context: .
+    depends_on:
+      - mongodb
+    restart: on-failure
